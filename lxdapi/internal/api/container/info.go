@@ -116,90 +116,110 @@ func Action(c *gin.Context) {
 
 	switch action {
 	case "start":
-		err := executor.CreateSyncTask(name, "start", userID, func(ctx context.Context) error {
-			return containerService.Start(ctx, name)
-		})
-		if err != nil {
-			response.Error(c, 500, err.Error())
+		if (dbContainer.TrafficLimit == 0 || dbContainer.TrafficUsageRaw < uint64(dbContainer.TrafficLimit)) && dbContainer.Status != "frozen" {
+			err := executor.CreateSyncTask(name, "start", userID, func(ctx context.Context) error {
+				return containerService.Start(ctx, name)
+			})
+			if err != nil {
+				response.Error(c, 500, err.Error())
+				return
+			}
+			logger.OK("容器启动成功: %s", name)
+			response.Success(c, "容器启动成功")
+		} else {
+			response.Error(c, 500, "容器被暂停或流量超限, 无法操作: "+action)
 			return
 		}
-		logger.OK("容器启动成功: %s", name)
-		response.Success(c, "容器启动成功")
-
 	case "stop":
-		err := executor.CreateSyncTask(name, "stop", userID, func(ctx context.Context) error {
-			return containerService.Stop(ctx, name)
-		})
-		if err != nil {
-			response.Error(c, 500, err.Error())
+		if (dbContainer.TrafficLimit == 0 || dbContainer.TrafficUsageRaw < uint64(dbContainer.TrafficLimit)) && dbContainer.Status != "frozen" {
+			err := executor.CreateSyncTask(name, "stop", userID, func(ctx context.Context) error {
+				return containerService.Stop(ctx, name)
+			})
+			if err != nil {
+				response.Error(c, 500, err.Error())
+				return
+			}
+			logger.OK("容器停止成功: %s", name)
+			response.Success(c, "容器停止成功")
+		} else {
+			response.Error(c, 500, "容器被暂停或流量超限, 无法操作: "+action)
 			return
 		}
-		logger.OK("容器停止成功: %s", name)
-		response.Success(c, "容器停止成功")
-
 	case "restart":
-		err := executor.CreateSyncTask(name, "restart", userID, func(ctx context.Context) error {
-			return containerService.Restart(ctx, name)
-		})
-		if err != nil {
-			response.Error(c, 500, err.Error())
+		if (dbContainer.TrafficLimit == 0 || dbContainer.TrafficUsageRaw < uint64(dbContainer.TrafficLimit)) && dbContainer.Status != "frozen" {
+			err := executor.CreateSyncTask(name, "restart", userID, func(ctx context.Context) error {
+				return containerService.Restart(ctx, name)
+			})
+			if err != nil {
+				response.Error(c, 500, err.Error())
+				return
+			}
+			logger.OK("容器重启成功: %s", name)
+			response.Success(c, "容器重启成功")
+		} else {
+			response.Error(c, 500, "容器被暂停或流量超限, 无法操作: "+action)
 			return
 		}
-		logger.OK("容器重启成功: %s", name)
-		response.Success(c, "容器重启成功")
-
 	case "reinstall":
-		var req struct {
-			Image    string `json:"image"`
-			Password string `json:"password"`
-		}
-		c.ShouldBindJSON(&req)
-
-		finalImage := req.Image
-		if finalImage == "" {
-			finalImage = dbContainer.Image
-		}
-
-		params := map[string]interface{}{
-			"container_name": name,
-			"original_image": dbContainer.Image,
-			"new_image":      finalImage,
-			"password_set":   req.Password != "",
-			"user_id":        userID,
-			"image":          finalImage,
-			"password":       req.Password,
-		}
-
-		task, err := executor.CreateTask(name, "reinstall", userID, params, func(ctx context.Context) error {
-			return containerService.Reinstall(ctx, name, req.Image, req.Password)
-		})
-		if err != nil {
-			response.Error(c, 500, "创建任务失败: "+err.Error())
+		if (dbContainer.TrafficLimit == 0 || dbContainer.TrafficUsageRaw < uint64(dbContainer.TrafficLimit)) && dbContainer.Status != "frozen" {
+			var req struct {
+				Image    string `json:"image"`
+				Password string `json:"password"`
+			}
+			c.ShouldBindJSON(&req)
+	
+			finalImage := req.Image
+			if finalImage == "" {
+				finalImage = dbContainer.Image
+			}
+	
+			params := map[string]interface{}{
+				"container_name": name,
+				"original_image": dbContainer.Image,
+				"new_image":      finalImage,
+				"password_set":   req.Password != "",
+				"user_id":        userID,
+				"image":          finalImage,
+				"password":       req.Password,
+			}
+	
+			task, err := executor.CreateTask(name, "reinstall", userID, params, func(ctx context.Context) error {
+				return containerService.Reinstall(ctx, name, req.Image, req.Password)
+			})
+			if err != nil {
+				response.Error(c, 500, "创建任务失败: "+err.Error())
+				return
+			}
+			logger.OK("容器重装任务已创建: %s, 任务ID: %d", name, task.ID)
+			response.Success(c, gin.H{
+				"task_id": task.ID,
+				"message": "重装任务已创建，正在后台执行",
+			})
+		} else {
+			response.Error(c, 500, "容器被暂停或流量超限, 无法操作: "+action)
 			return
 		}
-		logger.OK("容器重装任务已创建: %s, 任务ID: %d", name, task.ID)
-		response.Success(c, gin.H{
-			"task_id": task.ID,
-			"message": "重装任务已创建，正在后台执行",
-		})
-
 	case "reset-password":
-		var req struct {
-			Password string `json:"password" binding:"required"`
-		}
-		if err := c.ShouldBindJSON(&req); err != nil {
-			response.Error(c, 400, "参数错误: 缺少password")
+		if (dbContainer.TrafficLimit == 0 || dbContainer.TrafficUsageRaw < uint64(dbContainer.TrafficLimit)) && dbContainer.Status != "frozen" {
+			var req struct {
+				Password string `json:"password" binding:"required"`
+			}
+			if err := c.ShouldBindJSON(&req); err != nil {
+				response.Error(c, 400, "参数错误: 缺少password")
+				return
+			}
+	
+			svc := service.NewContainerService()
+			if err := svc.ResetPassword(c.Request.Context(), name, req.Password); err != nil {
+				response.Error(c, 500, err.Error())
+				return
+			}
+			logger.OK("容器密码重置成功: %s", name)
+			response.Success(c, "密码重置成功")
+		} else {
+			response.Error(c, 500, "容器被暂停或流量超限, 无法操作: "+action)
 			return
 		}
-
-		svc := service.NewContainerService()
-		if err := svc.ResetPassword(c.Request.Context(), name, req.Password); err != nil {
-			response.Error(c, 500, err.Error())
-			return
-		}
-		logger.OK("容器密码重置成功: %s", name)
-		response.Success(c, "密码重置成功")
-
 	default:
 		response.Error(c, 400, "不支持的操作类型: "+action)
 	}

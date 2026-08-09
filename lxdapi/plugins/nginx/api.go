@@ -44,7 +44,6 @@ func validateSSL(certStr, keyStr string) error {
 }
 
 func validateDomain(domain string) error {
-	domain = strings.TrimSpace(domain)
 
 	if len(domain) == 0 {
 		return fmt.Errorf("域名不能为空")
