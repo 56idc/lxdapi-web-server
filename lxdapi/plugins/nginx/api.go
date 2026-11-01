@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
+	"net"
 	"github.com/gin-gonic/gin"
 )
 
@@ -75,6 +75,22 @@ func validateDomain(domain string) error {
 	return nil
 }
 
+// validateTargetIP 严格校验目标 IP，防止 Nginx 配置注入
+func validateTargetIP(ip string) error {
+    ip = strings.TrimSpace(ip)
+    if ip == "" {
+        return nil // 允许为空，后续会用容器 PrivateIP 兜底
+    }
+    // 必须是合法的 IP 字面量（IPv4 或 IPv6），不接受域名
+    if net.ParseIP(ip) == nil {
+        return fmt.Errorf("目标IP格式非法")
+    }
+    // 双重保险：显式拒绝危险字符
+    if strings.ContainsAny(ip, ";{}# \t\r\n'\"") {
+        return fmt.Errorf("目标IP包含非法字符")
+    }
+    return nil
+}
 func (h *APIHandler) GetConfig(c *gin.Context) {
 	var config models.NginxConfig
 	if err := db.DB.First(&config).Error; err != nil {
@@ -287,7 +303,10 @@ func (h *APIHandler) CreateProxy(c *gin.Context) {
 		response.Error(c, 400, err.Error())
 		return
 	}
-
+	if err := validateTargetIP(req.TargetIP); err != nil {
+	    response.Error(c, 400, err.Error())
+	    return
+	}
 	if req.Protocol != "http" && req.Protocol != "https" {
 		response.Error(c, 400, "协议只能是http或https")
 		return
@@ -379,7 +398,10 @@ func (h *APIHandler) UpdateProxy(c *gin.Context) {
 		response.Error(c, 400, err.Error())
 		return
 	}
-
+	if err := validateTargetIP(req.TargetIP); err != nil {
+	    response.Error(c, 400, err.Error())
+	    return
+	}
 	proxy.Domain = req.Domain
 	proxy.Protocol = req.Protocol
 	proxy.TargetIP = req.TargetIP
