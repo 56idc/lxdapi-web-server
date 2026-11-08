@@ -1726,13 +1726,18 @@
                 showToast('error', '容器未运行，无法打开控制台');
                 return;
             }
-
+            // 从页面上直接获取当前显示的访问码
+            const currentHash = $('#containerHash').text().trim();
+            if (!currentHash || currentHash === '-' || currentHash === '加载中...' || currentHash === '加载失败') {
+                showToast('error', '无法获取有效的容器访问码，请刷新页面重试');
+                return;
+            }
             $.ajax({
                 url: '/api/admin/console/create-token',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
-                    hostname: containerName, containerHash: hash
+                    hostname: containerName, containerHash: currentHash
                 }),
                 success: function(result) {
                     if (result.code === 200 && result.data.token) {
