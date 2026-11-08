@@ -942,7 +942,7 @@
                 type: 'POST',
                 headers: headers,
                 contentType: 'application/json',
-                data: JSON.stringify({ hostname: containerName, containerHash: containerHash }),
+                data: JSON.stringify({ hostname: containerName, containerHash: hash }),
                 success: function(result) {
                     if (result.code === 200 && result.data.token) {
                         const consoleUrl = `/console?token=${result.data.token}`;
