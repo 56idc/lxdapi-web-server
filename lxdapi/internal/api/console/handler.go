@@ -30,6 +30,24 @@ var upgrader = websocket.Upgrader{
 // @Failure 400 {object} response.Response "参数错误"
 // @Failure 500 {object} response.Response "生成失败"
 // @Router /api/console/token [post]
+
+// 假设你使用的是 GORM
+func CheckContainerCredential(containerName, containerHash string) (bool, error) {
+	var count int64
+	
+	// 查询数据库中是否存在对应的未删除记录
+	// 注意：如果是软删除，GORM 默认会加上 deleted_at IS NULL 的条件
+	err := db.Model(&ContainerCredential{}).
+		Where("container_name = ? AND hash = ?", containerName, containerHash).
+		Count(&count).Error
+
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
 func CreateToken(c *gin.Context) {
 	var req struct {
 		Hostname string `json:"hostname" binding:"required"`
@@ -40,13 +58,23 @@ func CreateToken(c *gin.Context) {
 		response.Error(c, 400, "参数错误")
 		return
 	}
-	
-	token, err := console.GenerateToken(req.Hostname, req.ContainerHash)
+	// 1. 校验 containerHash 是否属于 containerName
+	isValid, err := CheckContainerCredential(req.Hostname, req.ContainerHash)
+	if err != nil {
+		response.Error(c, 500, "系统内部错误")
+		return
+	}
+	if !isValid {
+		// 返回 403 或 400，防止恶意请求
+		response.Error(c, 403, "非法请求!")
+		return
+	}
+	token, err := console.GenerateToken(req.Hostname)
 	if err != nil {
 		response.Error(c, 500, "生成令牌失败")
 		return
 	}
-	
+
 	response.Success(c, gin.H{
 		"token": token,
 	})
