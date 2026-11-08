@@ -1,4 +1,5 @@
 package console
+package db
 
 import (
 	"encoding/json"
@@ -9,6 +10,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+
+	"lxdapi/models"
 )
 
 var upgrader = websocket.Upgrader{
@@ -31,14 +34,15 @@ var upgrader = websocket.Upgrader{
 // @Failure 500 {object} response.Response "生成失败"
 // @Router /api/console/token [post]
 
-// 假设你使用的是 GORM
+// CheckContainerCredential 校验容器名称和Hash是否匹配且未被删除
 func CheckContainerCredential(containerName, containerHash string) (bool, error) {
 	var count int64
 	
-	// 查询数据库中是否存在对应的未删除记录
-	// 注意：如果是软删除，GORM 默认会加上 deleted_at IS NULL 的条件
-	err := db.Model(&ContainerCredential{}).
-		Where("container_name = ? AND hash = ?", containerName, containerHash).
+	// 使用 db.DB 引用全局 GORM 实例
+	// 使用 models.ContainerCredential 引用模型
+	// 建议给 hash 字段加上反引号，防止与数据库关键字冲突
+	err := DB.Model(&models.ContainerCredential{}).
+		Where("container_name = ? AND `hash` = ?", containerName, containerHash).
 		Count(&count).Error
 
 	if err != nil {
