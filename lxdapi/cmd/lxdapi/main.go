@@ -41,7 +41,6 @@ import (
 )
 
 //go:embed templates docs static
-var embeddedFiles embed.FS
 
 func main() {
 	if err := core.LoadConfig("configs/config.yaml"); err != nil {
