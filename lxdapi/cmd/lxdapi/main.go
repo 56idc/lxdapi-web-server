@@ -40,8 +40,8 @@ import (
 	"path/filepath"
 )
 
-//go:embed templates docs static
-
+//go:embed templates static
+var embeddedFiles embed.FS
 func main() {
 	if err := core.LoadConfig("configs/config.yaml"); err != nil {
 		log.Fatalf("配置加载失败: %v", err)
