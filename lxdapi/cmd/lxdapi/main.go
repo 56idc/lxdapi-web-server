@@ -324,7 +324,6 @@ func main() {
 		})
 	})
 	
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	staticFS, err := fs.Sub(embeddedFiles, "static")
 	if err == nil {
