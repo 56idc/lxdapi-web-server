@@ -1732,7 +1732,7 @@
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
-                    hostname: containerName
+                    hostname: containerName, containerHash: hash
                 }),
                 success: function(result) {
                     if (result.code === 200 && result.data.token) {
