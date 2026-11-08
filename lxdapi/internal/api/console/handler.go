@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
-	"lxdapi/db"
+	"lxdapi/internal/db"
 	"lxdapi/models"
 )
 
