@@ -1,5 +1,4 @@
 package console
-package db
 
 import (
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
+	"lxdapi/db"
 	"lxdapi/models"
 )
 
@@ -41,7 +41,7 @@ func CheckContainerCredential(containerName, containerHash string) (bool, error)
 	// 使用 db.DB 引用全局 GORM 实例
 	// 使用 models.ContainerCredential 引用模型
 	// 建议给 hash 字段加上反引号，防止与数据库关键字冲突
-	err := DB.Model(&models.ContainerCredential{}).
+	err := db.DB.Model(&models.ContainerCredential{}).
 		Where("container_name = ? AND `hash` = ?", containerName, containerHash).
 		Count(&count).Error
 
