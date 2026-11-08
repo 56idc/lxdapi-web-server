@@ -33,6 +33,7 @@ var upgrader = websocket.Upgrader{
 func CreateToken(c *gin.Context) {
 	var req struct {
 		Hostname string `json:"hostname" binding:"required"`
+		ContainerHash string `json:"containerHash" binding:"required"`
 	}
 	
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -40,7 +41,7 @@ func CreateToken(c *gin.Context) {
 		return
 	}
 	
-	token, err := console.GenerateToken(req.Hostname)
+	token, err := console.GenerateToken(req.Hostname, req.ContainerHash)
 	if err != nil {
 		response.Error(c, 500, "生成令牌失败")
 		return
