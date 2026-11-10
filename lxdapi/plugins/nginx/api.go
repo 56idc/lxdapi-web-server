@@ -592,8 +592,13 @@ func (h *APIHandler) CreateContainerProxy(c *gin.Context) {
 		response.Error(c, 401, "未授权")
 		return
 	}
-	
 	var req models.ReverseProxy
+	
+	if err := validateTargetIP(req.TargetIP); err != nil {
+	    response.Error(c, 400, err.Error())
+	    return
+	}
+	
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, 400, "参数错误")
 		return
@@ -619,7 +624,10 @@ func (h *APIHandler) UpdateContainerProxy(c *gin.Context) {
 		response.Error(c, 404, "规则不存在")
 		return
 	}
-	
+	if err := validateTargetIP(proxy.TargetIP); err != nil {
+	    response.Error(c, 400, err.Error())
+	    return
+	}		
 	if proxy.ContainerName != containerName {
 		response.Error(c, 403, "无权操作此规则")
 		return
