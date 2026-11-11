@@ -594,16 +594,14 @@ func (h *APIHandler) CreateContainerProxy(c *gin.Context) {
 	}
 	var req models.ReverseProxy
 	
-	if err := validateTargetIP(req.TargetIP); err != nil {
-	    response.Error(c, 400, err.Error())
-	    return
-	}
-	
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.Error(c, 400, "参数错误")
 		return
 	}
-	
+	if err := validateTargetIP(req.TargetIP); err != nil {
+	    response.Error(c, 400, err.Error())
+	    return
+	}	
 	req.ContainerName = containerName
 	
 	var container models.Container
@@ -686,6 +684,10 @@ func (h *APIHandler) createProxyInternal(c *gin.Context, req models.ReverseProxy
 	targetIP := req.TargetIP
 	if targetIP == "" {
 		targetIP = container.PrivateIP
+	}
+	if err := validateTargetIP(targetIP); err != nil {   // ← 加在这里
+	    response.Error(c, 400, err.Error())
+	    return
 	}
 	if err := h.checkRestrictions(req.Domain, targetIP); err != nil {
 		response.Error(c, 400, err.Error())
