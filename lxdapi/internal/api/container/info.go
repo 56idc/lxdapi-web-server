@@ -433,9 +433,13 @@ func GetDNS(c *gin.Context) {
 }
 
 func SetDNS(c *gin.Context) {
-	name, _ := c.Get("container_name")
-	containerName := name.(string)
-	
+	// 【防越权】强制从中间件读取身份，无视前端传来的任何参数
+	containerName := c.GetString("container_name")
+	if containerName == "" {
+		response.Error(c, 401, "容器身份验证失败")
+		return
+	}
+
 	var req struct {
 		DNS []string `json:"dns" binding:"required"`
 	}
@@ -443,24 +447,12 @@ func SetDNS(c *gin.Context) {
 		response.Error(c, 400, "参数错误")
 		return
 	}
-	
-	if len(req.DNS) == 0 {
-		response.Error(c, 400, "DNS服务器列表不能为空")
+
+	// 调用安全服务（防注入）
+	if err := service.ApplyContainerDNS(containerName, req.DNS); err != nil {
+		response.Error(c, 400, err.Error())
 		return
 	}
-	
-	ctx := context.Background()
-	lxcClient := service.NewContainerService().GetLXCClient()
-	
-	if err := lxcClient.SetContainerDNS(ctx, containerName, req.DNS); err != nil {
-		response.Error(c, 500, err.Error())
-		return
-	}
-	
-	logger.OK("容器 %s DNS设置成功: %v", containerName, req.DNS)
-	response.Success(c, gin.H{
-		"container": containerName,
-		"dns":       req.DNS,
-		"message":   "DNS设置成功",
-	})
+
+	response.Success(c, "DNS 设置成功")
 }
