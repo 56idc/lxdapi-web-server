@@ -1115,14 +1115,23 @@ func GetContainerDNS(c *gin.Context) {
 
 func SetContainerDNS(c *gin.Context) {
 	name := c.Param("name")
-	username, _ := c.Get("username")
 	
+	// 1. 安全提取用户名，检查是否真的取到了
+	userVal, exists := c.Get("username")
+	if !exists {
+		response.Error(c, 401, "未授权")
+		return
+	}
+	username := userVal.(string) // 强转为 string
+
+	// 2. 【防越权】查库校验归属
 	var container models.Container
 	if err := db.DB.Where("name = ? AND user_id = ?", name, username).First(&container).Error; err != nil {
-		response.Error(c, 404, "容器不存在")
+		response.Error(c, 404, "容器不存在或无权操作")
 		return
 	}
 	
+	// 3. 解析并校验参数
 	var req struct {
 		DNS []string `json:"dns" binding:"required"`
 	}
@@ -1131,16 +1140,10 @@ func SetContainerDNS(c *gin.Context) {
 		return
 	}
 	
-	if len(req.DNS) == 0 {
-		response.Error(c, 400, "DNS服务器列表不能为空")
-		return
-	}
-	
-	ctx := context.Background()
-	lxcClient := service.NewContainerService().GetLXCClient()
-	
-	if err := lxcClient.SetContainerDNS(ctx, name, req.DNS); err != nil {
-		response.Error(c, 500, err.Error())
+	// 4. 【防注入核心】丢弃原本的 lxcClient，调用我们写好的绝对安全的 Service
+	if err := service.ApplyContainerDNS(name, req.DNS); err != nil {
+		// 如果校验不通过（比如含有恶意字符），这里会直接拦截并返回 400
+		response.Error(c, 400, err.Error())
 		return
 	}
 	
