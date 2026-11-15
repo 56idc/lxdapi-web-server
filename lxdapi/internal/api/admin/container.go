@@ -577,25 +577,13 @@ func SetContainerDNS(c *gin.Context) {
 		return
 	}
 	
-	if len(req.DNS) == 0 {
-		response.Error(c, 400, "DNS服务器列表不能为空")
+	// 【防注入】直接换用安全方法
+	if err := service.ApplyContainerDNS(name, req.DNS); err != nil {
+		response.Error(c, 400, err.Error())
 		return
 	}
 	
-	ctx := context.Background()
-	lxcClient := service.NewContainerService().GetLXCClient()
-	
-	if err := lxcClient.SetContainerDNS(ctx, name, req.DNS); err != nil {
-		response.Error(c, 500, err.Error())
-		return
-	}
-	
-	logger.OK("容器 %s DNS设置成功: %v", name, req.DNS)
-	response.Success(c, gin.H{
-		"container": name,
-		"dns":       req.DNS,
-		"message":   "DNS设置成功",
-	})
+	response.Success(c, gin.H{"message": "DNS设置成功"})
 }
 
 func UpdateContainerRemark(c *gin.Context) {
