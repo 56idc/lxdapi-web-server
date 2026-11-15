@@ -433,10 +433,10 @@ func GetDNS(c *gin.Context) {
 }
 
 func SetDNS(c *gin.Context) {
-	// 【防越权】强制从中间件读取身份，无视前端传来的任何参数
+	// 【防越权】强取身份
 	containerName := c.GetString("container_name")
 	if containerName == "" {
-		response.Error(c, 401, "容器身份验证失败")
+		response.Error(c, 401, "身份异常")
 		return
 	}
 
@@ -447,12 +447,12 @@ func SetDNS(c *gin.Context) {
 		response.Error(c, 400, "参数错误")
 		return
 	}
-
-	// 调用安全服务（防注入）
+	
+	// 【防注入】直接换用安全方法
 	if err := service.ApplyContainerDNS(containerName, req.DNS); err != nil {
 		response.Error(c, 400, err.Error())
 		return
 	}
-
-	response.Success(c, "DNS 设置成功")
+	
+	response.Success(c, gin.H{"message": "DNS设置成功"})
 }
